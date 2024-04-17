@@ -1,57 +1,31 @@
 #!/usr/bin/python3
-""" api """
+'''
+Python script for exporting data in JSON format
+'''
 import json
 import requests
-import sys
 
+if __name__ == "__main__":
+    users_endpoint = 'https://jsonplaceholder.typicode.com/users'
+    todos_endpoint = 'https://jsonplaceholder.typicode.com/todos'
 
-def filter(data, key, val):
-    return [v for v in data if v[key] is val]
+    users_data = requests.get(users_endpoint).json()
+    todos_data = requests.get(todos_endpoint).json()
 
+    all_user_tasks = {}
 
-def first(data):
-    if len(data) < 1:
-        return None
+    for user in users_data:
+        user_id = str(user["id"])
+        all_user_tasks[user_id] = []
 
-    return data[0]
+        for task in todos_data:
+            if task["userId"] == user["id"]:
+                task_info = {
+                    "username": user["username"],
+                    "task": task["title"],
+                    "completed": task["completed"]
+                }
+                all_user_tasks[user_id].append(task_info)
 
-
-def must(value, error):
-    if value is None:
-        raise error
-
-    return value
-
-
-def write(path, data):
-    with open(path, 'w') as file:
-        file.write(data)
-
-
-def write_json(path, data):
-    with open(path, 'w') as file:
-        json.dump(data, file)
-
-
-def main():
-    users = requests.get('https://jsonplaceholder.typicode.com/users').json()
-    todos = requests.get('https://jsonplaceholder.typicode.com/todos').json()
-
-    final = {}
-    for user_data in users:
-        user_todos = filter(todos, 'userId', user_data['id'])
-        for v in user_todos:
-            if v['userId'] not in final:
-                final[v['userId']] = []
-
-            final[v['userId']].append({
-                'task': v['title'],
-                'completed': v['completed'],
-                'username': user_data['username'],
-            })
-
-        write_json('todo_all_employees.json', final)
-
-
-if __name__ == '__main__':
-    main()
+    with open("todo_all_employees.json", 'w') as json_file:
+        json.dump(all_user_tasks, json_file)

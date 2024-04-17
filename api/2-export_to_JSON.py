@@ -1,60 +1,36 @@
 #!/usr/bin/python3
-""" api """
+""" export data in JSON format"""
+
 import json
 import requests
-import sys
-
-
-def filter(data, key, val):
-    return [v for v in data if v[key] is val]
-
-
-def first(data):
-    if len(data) < 1:
-        return None
-
-    return data[0]
-
-
-def must(value, error):
-    if value is None:
-        raise error
-
-    return value
-
-
-def write(path, data):
-    with open(path, 'w') as file:
-        file.write(data)
-
-
-def write_json(path, data):
-    with open(path, 'w') as file:
-        json.dump(data, file)
-
-
-def main():
-    index = int(sys.argv[1])
-
-    users = requests.get('https://jsonplaceholder.typicode.com/users').json()
-    todos = requests.get('https://jsonplaceholder.typicode.com/todos').json()
-
-    user_data = must(first(filter(users, 'id', index)),
-                     ValueError("user not found"))
-    user_todos = filter(todos, 'userId', user_data['id'])
-    final = {}
-    for v in user_todos:
-        if v['userId'] not in final:
-            final[v['userId']] = []
-
-        final[v['userId']].append({
-            'task': v['title'],
-            'completed': v['completed'],
-            'username': user_data['username'],
-        })
-
-    write_json('%s.json' % index, final)
-
+from sys import argv
 
 if __name__ == '__main__':
-    main()
+    # Fetch user data and tasks from the JSONPlaceholder API
+    user_data = requests.get(
+        "https://jsonplaceholder.typicode.com/users/{}".
+        format(argv[1])).json()
+    todo_data = requests.get(
+        "https://jsonplaceholder.typicode.com/todos?userId={}".
+        format(argv[1])).json()
+
+    # Extract relevant information from user data
+    username = user_data.get("username")
+    user_id = argv[1]
+
+    # Prepare tasks data for export
+    tasks = []
+    for task in todo_data:
+        task_dict = {
+            "task": task.get('title'),
+            "completed": task.get('completed'),
+            "username": username
+        }
+        tasks.append(task_dict)
+
+    # Create a dictionary with user_id as the key and tasks as the value
+    todos = {user_id: tasks}
+
+    # Export tasks data to a JSON file named with the user_id
+    with open("{}.json".format(user_id), 'w') as jsonfile:
+        json.dump(todos, jsonfile)
