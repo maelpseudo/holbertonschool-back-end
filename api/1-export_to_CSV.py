@@ -1,45 +1,56 @@
+#!/usr/bin/python3
+""" api """
 import requests
 import sys
-import csv
 
-def export_tasks_to_csv(employee_id):
-    # API endpoints
-    base_url = 'https://jsonplaceholder.typicode.com'
-    users_url = f'{base_url}/users/{employee_id}'
-    todos_url = f'{base_url}/todos?userId={employee_id}'
 
-    # Fetching user data
-    user_response = requests.get(users_url)
-    if user_response.status_code != 200:
-        print(f'Error fetching data for user with ID {employee_id}')
-        return
-    user_data = user_response.json()
+def filter(data, key, val):
+    return [v for v in data if v[key] is val]
 
-    # Fetching todos data
-    todos_response = requests.get(todos_url)
-    if todos_response.status_code != 200:
-        print(f'Error fetching TODOs for user with ID {employee_id}')
-        return
-    todos_data = todos_response.json()
 
-    # CSV File Writing
-    file_name = f'{employee_id}.csv'
-    with open(file_name, mode='w', newline='') as file:
-        writer = csv.writer(file, quoting=csv.QUOTE_ALL)
-        for task in todos_data:
-            writer.writerow([employee_id, user_data['username'], task['completed'], task['title']])
+def first(data):
+    if len(data) < 1:
+        return None
 
-    print(f"Data successfully written to {file_name}")
+    return data[0]
+
+
+def must(value, error):
+    if value is None:
+        raise error
+
+    return value
+
+
+def write(path, data):
+    with open(path, 'w') as file:
+        file.write(data)
+
+
+def main():
+    index = int(sys.argv[1])
+
+    users = requests.get('https://jsonplaceholder.typicode.com/users').json()
+    todos = requests.get('https://jsonplaceholder.typicode.com/todos').json()
+
+    user_data = must(first(filter(users, 'id', index)),
+                     ValueError("user not found"))
+    user_todos = filter(todos, 'userId', user_data['id'])
+
+    output = ''
+    for todo_data in user_todos:
+        final = [
+            user_data['id'],
+            user_data['username'],
+            todo_data['completed'],
+            todo_data['title'],
+        ]
+        final = ['"%s"' % str(v) for v in final]
+        final = ','.join(final)
+        output += final + '\n'
+
+    write('%s.csv' % index, output)
+
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: python3 1-export_to_CSV.py <employee_id>")
-        sys.exit(1)
-    
-    try:
-        emp_id = int(sys.argv[1])
-    except ValueError:
-        print("Employee ID must be an integer.")
-        sys.exit(1)
-
-    export_tasks_to_csv(emp_id)
+    main()

@@ -1,42 +1,57 @@
-import requests
+#!/usr/bin/python3
+""" api """
 import json
+import requests
+import sys
 
-def export_all_tasks():
-    # API endpoints
-    base_url = 'https://jsonplaceholder.typicode.com'
-    users_url = f'{base_url}/users'
-    todos_url = f'{base_url}/todos'
 
-    # Fetching all user data
-    users_response = requests.get(users_url)
-    if users_response.status_code != 200:
-        print('Error fetching users')
-        return
-    users_data = users_response.json()
+def filter(data, key, val):
+    return [v for v in data if v[key] is val]
 
-    # Fetching all todos data
-    todos_response = requests.get(todos_url)
-    if todos_response.status_code != 200:
-        print('Error fetching todos')
-        return
-    todos_data = todos_response.json()
 
-    # Organize tasks by user
-    task_dict = {}
-    for user in users_data:
-        user_tasks = [task for task in todos_data if task['userId'] == user['id']]
-        task_list = [
-            {"username": user['username'], "task": task['title'], "completed": task['completed']}
-            for task in user_tasks
-        ]
-        task_dict[user['id']] = task_list
+def first(data):
+    if len(data) < 1:
+        return None
 
-    # JSON File Writing
-    file_name = 'todo_all_employees.json'
-    with open(file_name, 'w') as json_file:
-        json.dump(task_dict, json_file, indent=4)
+    return data[0]
 
-    print(f"Data successfully written to {file_name}")
+
+def must(value, error):
+    if value is None:
+        raise error
+
+    return value
+
+
+def write(path, data):
+    with open(path, 'w') as file:
+        file.write(data)
+
+
+def write_json(path, data):
+    with open(path, 'w') as file:
+        json.dump(data, file)
+
+
+def main():
+    users = requests.get('https://jsonplaceholder.typicode.com/users').json()
+    todos = requests.get('https://jsonplaceholder.typicode.com/todos').json()
+
+    final = {}
+    for user_data in users:
+        user_todos = filter(todos, 'userId', user_data['id'])
+        for v in user_todos:
+            if v['userId'] not in final:
+                final[v['userId']] = []
+
+            final[v['userId']].append({
+                'task': v['title'],
+                'completed': v['completed'],
+                'username': user_data['username'],
+            })
+
+        write_json('todo_all_employees.json', final)
+
 
 if __name__ == '__main__':
-    export_all_tasks()
+    main()
